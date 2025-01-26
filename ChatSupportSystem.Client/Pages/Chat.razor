@@ -1,0 +1,169 @@
+﻿@page "/chat"
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+
+<h3>Live Chat</h3>
+
+
+@if (isConnected)
+{
+    if(string.IsNullOrEmpty(sessionId))
+    {
+        <button @onclick="StartSession">Start Chat Session</button>
+    }
+    else
+    {
+        <div>
+            <p>Session ID: @sessionId</p>
+            <ul id="messagesList">
+                @foreach (var message in messages)
+                {
+                    <li>@message</li>
+                }
+                @if (!string.IsNullOrEmpty(pollResults))
+                {
+                    <li>@pollResults</li>
+                }
+            </ul>
+            <input type="text" @bind="userMessage" placeholder="Enter message..." />
+            <button @onclick="SendMessage">Send</button>
+        </div>
+    }
+
+}
+else
+{
+    <p>Connecting to chat...</p>
+}
+
+
+
+@code {
+
+    private HubConnection? hubConnection;
+    private List<string> messages = new();
+    private string apiBaseUrl;
+    private string userMessage = string.Empty;
+    private string pollResults;
+    private string sessionId = string.Empty;
+    private bool isConnected = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        apiBaseUrl = Configuration.GetValue<string>("Api:BaseUri");
+
+        // Initialize SignalR connection
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl($"{apiBaseUrl}/chatHub")
+            .Build();
+
+        // Handle incoming messages
+        hubConnection.On<string>("ReceiveMessage", (message) =>
+        {
+            messages.Add(message);
+            InvokeAsync(StateHasChanged);
+        });
+
+        // Connect to the SignalR Hub
+        await hubConnection.StartAsync();
+
+        isConnected = true;
+    }
+
+    // This will be used to initiate the session and start polling
+    private async Task StartSession()
+    {
+        var random = new Random();
+
+        var userData = new
+        {
+            UserId = $"Actor{random.Next(1,100)}" // Generate a unique user ID
+        };
+
+        var response = await Http.PostAsJsonAsync($"{apiBaseUrl}/api/chat/initiate", userData);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            //var errorContent = await response.Content.ReadAsStringAsync();
+            //message = $"Failed to initiate session: {response.StatusCode} - {errorContent}";
+            return;
+        }
+
+        sessionId = JsonSerializer.Deserialize<string>(await response.Content.ReadAsStringAsync());
+
+        await hubConnection.SendAsync("JoinSession", sessionId); // Join the session group
+
+        _ = PollSession(sessionId);
+    }
+
+    //Polling the server with the sessionId
+    private async Task PollSession(string sessionId)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            // Wait for 1 second before the next call
+            await Task.Delay(1000); //1000
+
+            var result = await PollEndpoint(sessionId);
+
+            if (bool.Parse(result))
+            {
+                pollResults = string.Empty;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            pollResults = $"Checking available agent".PadRight(i + 26, '.');
+            await InvokeAsync(StateHasChanged);
+        }
+
+        pollResults = "No agents available at the moment";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Simulate an API call to poll the session
+    private async Task<string> PollEndpoint(string sessionId)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"{apiBaseUrl}/api/chat/poll", sessionId);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadAsStringAsync();
+                return result;
+            }
+            else
+            {
+                return "Error in polling";
+            }
+        }
+        catch (Exception ex)
+        {
+            return $"Error in polling {ex.Message}";
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendMessageToSession", sessionId, userMessage); // Send message to the session group
+            userMessage = string.Empty;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("LeaveSession", sessionId); // Leave the session group
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

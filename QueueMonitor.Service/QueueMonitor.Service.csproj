@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-QueueMonitor.Service-e8f28abb-d769-4419-b02b-128c8a61c62a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChatSupportSystem.Infrastructure\ChatSupportSystem.Infrastructure.csproj" />
+    <ProjectReference Include="..\ChatSupportSystem.Shared\ChatSupportSystem.Shared.csproj" />
+  </ItemGroup>
+</Project>
