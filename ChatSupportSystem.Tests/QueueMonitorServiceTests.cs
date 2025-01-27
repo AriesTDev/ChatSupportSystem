@@ -47,6 +47,8 @@ namespace ChatSupportSystem.Tests
                 new ChatSession { Id = Guid.NewGuid(), Status = ChatSessionStatus.Queued, PollCounter = 0, UserId = "User5" }
             };
 
+            var isDuringOfficeHours = true;
+
             _mockSessionRepository.Setup(repo => repo.GetAllQueuedSessionsAsync()).ReturnsAsync(sessions);
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(IChatSessionRepository))).Returns(_mockSessionRepository.Object);
 
@@ -57,7 +59,7 @@ namespace ChatSupportSystem.Tests
             );
 
             // Act
-            var assignedSessions = service.AssignChatsToAgents(agents, sessions);
+            var assignedSessions = service.AssignChatsToAgents(agents, sessions, isDuringOfficeHours);
 
             // Assert
             var juniorAgent = agents.First(a => a.Name == "JuniorAgent");
@@ -104,8 +106,10 @@ namespace ChatSupportSystem.Tests
                 _mockServiceProvider.Object
             );
 
+            var isDuringOfficeHours = true;
+
             // Act
-            var assignedSessions = service.AssignChatsToAgents(agents, sessions);
+            var assignedSessions = service.AssignChatsToAgents(agents, sessions, isDuringOfficeHours);
 
             // Assert
             var juniorAgent1 = agents.First(a => a.Name == "JuniorAgent1");

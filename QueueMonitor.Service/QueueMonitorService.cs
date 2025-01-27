@@ -118,7 +118,7 @@ namespace QueueMonitor.Service
                     }
                 }
 
-                var updatedSessions = AssignChatsToAgents(_agents, sessions);
+                var updatedSessions = AssignChatsToAgents(_agents, sessions, IsDuringOfficeHours());
 
                 // Update session assigned and publish message to SignalR
                 foreach (var session in updatedSessions)
@@ -144,9 +144,9 @@ namespace QueueMonitor.Service
         }
 
 
-        public List<ChatSession> AssignChatsToAgents(List<Agent> agents, List<ChatSession> sessions)
+        public List<ChatSession> AssignChatsToAgents(List<Agent> agents, List<ChatSession> sessions, bool isDuringOfficeHours)
         {
-            HandleOverflow(sessions, agents);
+            HandleOverflow(sessions, agents, isDuringOfficeHours);
 
             foreach (var session in sessions.Where(s => s.Status == ChatSessionStatus.Queued))
             {
@@ -167,7 +167,7 @@ namespace QueueMonitor.Service
             return sessions;
         }
 
-        public void HandleOverflow(List<ChatSession> sessions, List<Agent> agents)
+        public void HandleOverflow(List<ChatSession> sessions, List<Agent> agents, bool isDuringOfficeHours)
         {
             // Calculate current team capacity
             int teamCapacity = agents.Where(a => !a.IsShiftOver).Sum(a => a.RemainingCapacity);
