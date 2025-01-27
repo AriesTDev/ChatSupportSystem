@@ -22,7 +22,6 @@ namespace QueueMonitor.Service
         private readonly TimeSpan _officeStartTime = new TimeSpan(8, 0, 0); // 8:00 AM
         private readonly TimeSpan _officeEndTime = new TimeSpan(17, 0, 0); // 5:00 PM
 
-
         public QueueMonitorService(ILogger<QueueMonitorService> logger,
                                    IConfiguration configuration,
                                    IServiceProvider serviceProvider)
@@ -30,7 +29,12 @@ namespace QueueMonitor.Service
             _logger = logger;
             _serviceProvider = serviceProvider;
             _configuration = configuration;
-            _agents = new();
+            //_agents = new();
+            _agents = new List<Agent>
+            {
+                new Agent { Id = Guid.NewGuid(), Name = "SeniorAgent", Seniority = Seniority.Senior, CurrentChats = 0, IsShiftOver = false },
+                new Agent { Id = Guid.NewGuid(), Name = "JuniorAgent", Seniority = Seniority.Junior, CurrentChats = 0, IsShiftOver = false }
+            };
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -142,7 +146,6 @@ namespace QueueMonitor.Service
 
         public List<ChatSession> AssignChatsToAgents(List<Agent> agents, List<ChatSession> sessions)
         {
-            // Handle overflow (you can make this method testable as well if needed)
             HandleOverflow(sessions, agents);
 
             foreach (var session in sessions.Where(s => s.Status == ChatSessionStatus.Queued))
@@ -198,8 +201,8 @@ namespace QueueMonitor.Service
         {
             return true;
 
-            var currentTime = DateTime.Now.TimeOfDay;
-            return currentTime >= _officeStartTime && currentTime <= _officeEndTime;
+            //var currentTime = DateTime.Now.TimeOfDay;
+            //return currentTime >= _officeStartTime && currentTime <= _officeEndTime;
         }
 
     }
